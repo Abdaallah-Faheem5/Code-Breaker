@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07566a">
+  <meta name="description" content="Code Breaker by iTeam, Al Zaytoonah University of Jordan. A beginner-friendly web and programming challenge for curious minds.">
+  <title>Code Breaker by iTeam | The Beginner's Web Challenge</title>
+  <link rel="icon" type="image/svg+xml" href="assets/iteam-mark.svg">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body data-level="1">
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand" aria-label="iTeam, Al Zaytoonah University of Jordan, Faculty of Science and Technology">
+        <img class="team-mark" src="assets/iteam-mark.svg" alt="" width="66" height="66">
+        <div class="team-wordmark">iTeam<small>Al Zaytoonah University of Jordan<span>Faculty of Science &amp; Technology</span></small></div>
+      </div>
+      <div class="topbar-actions">
+        <span class="connection"><i></i> AN iTEAM CHALLENGE</span>
+        <button class="button button-quiet" id="guide-button">How to play <span aria-hidden="true">?</span></button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow"><span class="brand-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></span> iTEAM PRESENTS / THE BEGINNER'S WEB CHALLENGE</p>
+          <h1 id="page-title">Code Breaker.<br><span>Think. Solve. Unlock.</span></h1>
+          <p class="hero-description">Three levels. Twenty-four questions. One digital vault.<br>No coding experience needed. Just bring your curiosity.</p>
+          <p class="hero-arabic" lang="ar" dir="rtl">فكّر، جرّب، وافتح باب التحدّي مع iTeam.</p>
+        </div>
+        <div class="hero-terminal" aria-hidden="true">
+          <div class="terminal-label">YOUR NEXT BREAKTHROUGH <span>●</span></div>
+          <p>&gt; learn. build. break through.<span class="cursor">_</span></p>
+          <div class="signal-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="terminal-label"><span>EXPERIENCE: OPTIONAL</span><span>CURIOSITY: REQUIRED</span></div>
+        </div>
+      </section>
+
+      <section class="stats-bar" aria-label="Mission statistics">
+        <div class="stat timer-stat"><span class="stat-label">TIME REMAINING</span><strong id="timer" role="timer" aria-label="20 minutes remaining">20:00</strong><span class="stat-tag" id="timer-state">STANDBY</span></div>
+        <div class="stat"><span class="stat-label">YOUR SCORE</span><strong><span id="score">0</span><small> PTS</small></strong></div>
+        <div class="stat"><span class="stat-label">HINTS REMAINING</span><strong><span id="hints-left">3</span><small> / 3</small></strong></div>
+        <div class="stat"><span class="stat-label">PERSONAL BEST</span><strong id="best-score">—</strong><span class="best-time" id="best-time">Score first. Time breaks ties.</span></div>
+      </section>
+
+      <div class="workspace">
+        <aside class="level-sidebar" aria-label="Your mission route">
+          <div class="section-label">THE ROAD TO THE VAULT <span>03</span></div>
+          <ol class="level-list" id="level-list"></ol>
+          <div class="overall-progress">
+            <div><span>MISSION PROGRESS</span><strong id="progress-label">0 / 24</strong></div>
+            <div class="progress-track" id="progress-bar" role="progressbar" aria-label="Questions answered" aria-valuemin="0" aria-valuemax="24" aria-valuenow="0"><span id="progress-fill"></span></div>
+          </div>
+          <div class="sidebar-note"><span class="team-mini-motif" aria-hidden="true"></span><p>Every expert<br>was once a beginner.</p><span class="note-line"></span></div>
+          <button class="button restart-button" id="restart-button"><span aria-hidden="true">↻</span> Restart mission</button>
+        </aside>
+
+        <section class="challenge-area" aria-labelledby="level-title">
+          <div class="challenge-heading">
+            <div><p class="eyebrow" id="level-kicker">LEVEL 01 / ROOKIE</p><h2 id="level-title">Start with curiosity.</h2></div>
+            <span class="difficulty" id="level-badge">FIRST STEPS</span>
+          </div>
+          <p class="level-description" id="level-description"></p>
+          <ol class="question-progress" id="question-progress" aria-label="Questions in this level"></ol>
+
+          <div class="start-banner" id="start-banner">
+            <div><strong>Ready for your first breakthrough?</strong><p>The clock starts only when you begin.</p></div>
+            <button class="button button-primary" id="start-button">Begin mission <span aria-hidden="true">↗</span></button>
+          </div>
+
+          <article class="question-card" id="question-card" aria-labelledby="question-title">
+            <div class="question-topline"><span id="question-category"></span><span id="question-number">01 / 24</span></div>
+            <div class="question-meta"><span id="question-difficulty"></span><span id="question-points"></span></div>
+            <h3 id="question-title" tabindex="-1"></h3>
+            <div class="code-panel" id="code-panel" hidden>
+              <div class="code-toolbar"><span><i></i><i></i><i></i></span><span id="code-filename"></span><span aria-hidden="true">&lt;/&gt;</span></div>
+              <pre tabindex="0" aria-label="Question code or pattern"><code id="question-code"></code></pre>
+            </div>
+            <p class="selection-label" id="selection-help">SELECT ONE ANSWER <span>A–D or 1–4 · Enter to submit</span></p>
+            <div class="answer-grid" id="answer-grid" role="group" aria-label="Answer options" aria-describedby="selection-help"></div>
+            <div class="feedback" id="feedback" role="status" aria-live="polite" hidden></div>
+            <div class="hint-panel" id="hint-panel" hidden><span class="eyebrow">A LITTLE NUDGE</span><p id="hint-text"></p></div>
+            <div class="question-actions">
+              <button class="hint-button" id="hint-button" disabled>◇ Use a hint · −75 pts</button>
+              <button class="button button-primary" id="submit-button" disabled>Lock answer <span aria-hidden="true">→</span></button>
+              <button class="button button-primary" id="next-button" hidden>Next question <span aria-hidden="true">→</span></button>
+            </div>
+          </article>
+          <p class="workspace-footnote">READ. REASON. BREAK THROUGH. <span>One submission per question.</span></p>
+        </section>
+
+        <aside class="intel-sidebar" aria-label="Vault status and clues">
+          <div class="section-label">DIGITAL VAULT <span class="live-dot"></span></div>
+          <div class="vault-visual" id="vault-visual" aria-hidden="true">
+            <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+            <div class="vault-door"><div class="vault-dial"><i></i><i></i><i></i></div><span class="vault-bolt bolt-left"></span><span class="vault-bolt bolt-right"></span></div>
+          </div>
+          <div class="vault-caption"><span id="vault-status">AWAITING PLAYER</span><p id="vault-detail">Three levels stand between you and the key.</p></div>
+          <div class="intel-divider"></div>
+          <div class="section-label">YOUR CLUE NOTEBOOK <span>03</span></div>
+          <p class="notebook-intro">Save the seals. You’ll need their digits for the final question.</p>
+          <ol class="clue-list" id="clue-list"></ol>
+          <p class="clue-note">Clues appear after feedback, even if your answer was incorrect.</p>
+          <div class="intel-divider"></div>
+          <div class="section-label">MISSION LOG <span aria-hidden="true">&gt;_</span></div>
+          <ol class="activity-log" id="activity-log" aria-live="polite" aria-relevant="additions"></ol>
+        </aside>
+      </div>
+    </main>
+    <footer class="site-footer"><span><i></i> CODE BREAKER · BY iTEAM</span><span>AL ZAYTOONAH UNIVERSITY OF JORDAN</span><span lang="ar" dir="rtl">كلية العلوم وتكنولوجيا المعلومات</span></footer>
+  </div>
+
+  <dialog class="modal" id="guide-dialog" aria-labelledby="guide-title">
+    <button class="modal-close" data-close="guide-dialog" aria-label="Close instructions">×</button>
+    <p class="eyebrow">PLAYER HANDBOOK</p><h2 id="guide-title">Your vault protocol.</h2>
+    <p>Answer 24 questions across Rookie, Hacker, and Code Breaker. Question 24 is the final vault challenge. You have 20 minutes.</p>
+    <ul class="rules-list">
+      <li><strong>Pick, then lock.</strong> Select one of four cards and press Lock answer. Every question allows one submission. A fresh shuffled selection is made for each game, with no repeats across levels.</li>
+      <li><strong>Learn and continue.</strong> Correct answers earn the displayed points. Wrong answers earn zero; both show an explanation and let you continue.</li>
+      <li><strong>Three hints total.</strong> Each costs 75 points from your running total, including future earnings. Your displayed score never goes below zero. One hint per question.</li>
+      <li><strong>Collect three seals.</strong> Their digits appear in your notebook after their questions, regardless of your answer. Use them to solve the final vault code.</li>
+      <li><strong>Open the vault.</strong> Submit the correct final answer before time expires to win. A wrong final answer or timeout ends the run.</li>
+      <li><strong>Compete fairly.</strong> Highest score wins; equal scores use the shorter completion time. Only victories qualify for your personal best. There is no time bonus.</li>
+    </ul>
+    <p class="modal-note">Keyboard: A–D or 1–4 selects, arrow keys move between answers, Enter submits. After feedback, Enter continues. Tab and Space also work. The timer continues in dialogs and hidden tabs.</p>
+    <button class="button button-primary" data-close="guide-dialog">Let’s do this <span aria-hidden="true">→</span></button>
+  </dialog>
+  <dialog class="modal small-modal" id="restart-dialog" aria-labelledby="restart-title">
+    <p class="eyebrow">RESET PROTOCOL</p><h2 id="restart-title">Start a fresh mission?</h2>
+    <p>Your current score and progress will reset. Your personal best stays saved.</p>
+    <div class="modal-actions"><button class="button button-quiet" data-close="restart-dialog">Keep playing</button><button class="button button-primary" id="confirm-restart">Restart ↻</button></div>
+  </dialog>
+  <dialog class="modal result-modal" id="result-dialog" aria-labelledby="result-title">
+    <div class="result-symbol" id="result-symbol" aria-hidden="true">↗</div>
+    <p class="eyebrow" id="result-kicker"></p><h2 id="result-title"></h2><p id="result-description"></p>
+    <div class="result-stats"><div><span>FINAL SCORE</span><strong id="result-score"></strong></div><div><span>COMPLETION TIME</span><strong id="result-time"></strong></div></div>
+    <p class="result-breakdown" id="result-breakdown"></p>
+    <div class="vault-explanation" id="vault-explanation" hidden><h3>The code, decoded.</h3><p id="vault-explanation-text"></p></div>
+    <p class="record-message" id="record-message"></p>
+    <button class="button button-primary" id="play-again">Play again <span aria-hidden="true">↻</span></button>
+    <button class="button button-quiet" id="review-mission">View mission</button>
+  </dialog>
+</body>
+</html>

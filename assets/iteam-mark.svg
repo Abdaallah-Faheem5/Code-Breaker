@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" fill="none">
+  <title>iTeam four-color team motif</title>
+  <!-- Vector interpretation of the four-person motif in the supplied reference. -->
+  <defs>
+    <g id="person">
+      <circle cx="120" cy="26" r="17"/>
+      <path d="M77 20C54 20 54 55 77 55C91 55 102 65 102 80C102 104 138 104 138 80C138 65 149 55 163 55C186 55 186 20 163 20C143 20 145 42 136 50C127 58 112 58 103 50C94 42 97 20 77 20Z"/>
+    </g>
+  </defs>
+  <use href="#person" fill="#1C9EAA"/>
+  <use href="#person" fill="#07566A" transform="rotate(90 120 120)"/>
+  <use href="#person" fill="#F58232" transform="rotate(180 120 120)"/>
+  <use href="#person" fill="#B40D24" transform="rotate(270 120 120)"/>
+</svg>
