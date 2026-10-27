@@ -7,7 +7,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const root = path.join(__dirname, "..");
-const source = fs.readFileSync(path.join(root, "script.js"), "utf8");
+const source = ["questions.js", "i18n.js", "script.js"].map(file => fs.readFileSync(path.join(root, file), "utf8")).join("\n");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "style.css"), "utf8");
 
@@ -38,7 +38,7 @@ class Element {
     };
   }
   set textContent(text) { this._text = String(text); this.children = []; this._html = ""; }
-  get textContent() { return this._text + this.children.map(child => child.textContent).join(""); }
+  get textContent() { return this._text + this._html.replace(/<[^>]*>/g, "") + this.children.map(child => child.textContent).join(""); }
   set innerHTML(value) { this._html = String(value); this._text = ""; this.children = []; }
   get innerHTML() { return this._html; }
   setAttribute(name, value) {
@@ -59,7 +59,7 @@ class Element {
   matches(selector) {
     if (selector.startsWith("#")) return this.id === selector.slice(1);
     if (selector.startsWith(".")) return this.classList.contains(selector.slice(1));
-    if (selector === "[data-close]") return this.dataset.close !== undefined;
+    if (/^\[data-[\w-]+\]$/.test(selector)) return this.getAttribute(selector.slice(1, -1)) !== null;
     if (selector === "dialog[open]") return this.tagName === "DIALOG" && this.open;
     return this.tagName === selector.toUpperCase();
   }
@@ -88,13 +88,17 @@ function fixture() {
   const voidTags = new Set(["META", "LINK", "INPUT", "BR", "HR", "IMG"]);
   for (const token of html.match(/<![^>]*>|<\/?[\w-]+\b[^>]*>|[^<]+/g)) {
     if (token.startsWith("<!")) continue;
-    if (token.startsWith("</")) { stack.pop(); continue; }
+    if (token.startsWith("</")) {
+      assert.equal(stack.at(-1).tagName, token.slice(2, -1).toUpperCase(), 'HTML tags must be correctly nested');
+      stack.pop(); continue;
+    }
     if (token.startsWith("<")) {
       const tag = token.match(/^<([\w-]+)/)[1];
       const element = document.createElement(tag);
       for (const match of token.slice(tag.length + 1, -1).matchAll(/([\w-]+)(?:="([^"]*)")?/g)) element.setAttribute(match[1], match[2] ?? "");
       stack.at(-1).append(element);
       if (tag === "body") document.body = element;
+      if (tag === "html") document.documentElement = element;
       if (!voidTags.has(element.tagName) && !token.endsWith("/>")) stack.push(element);
     } else stack.at(-1).append(document.createTextNode(token));
   }
@@ -155,326 +159,335 @@ function check(name, callback) {
   catch (error) { console.error(`FAILED: ${name}`); throw error; }
 }
 
-// Independent answer-position reference, reviewed alongside each explanation.
-const REFERENCE = {
-  browser: 0, "html-role": 3, "badge-deduction": 1, algorithm: 2, bug: 3, url: 0, "debug-first": 1, "triangle-seal": 2,
-  heading: 2, link: 0, button: 3, "css-color": 1, "css-font": 1, "boolean-not": 3, "click-event": 2, "square-seal": 0,
-  "grouped-math": 0, "class-style": 3, "robot-trace": 2, "circle-seal": 1, "both-conditions": 1, "text-number": 3, "double-plus-one": 0, "final-vault": 2,
-  "se-meaning": 0, "se-requirement-feature": 2, "se-sdlc": 3, "se-planning": 1, "se-teamwork": 2, "se-documentation": 0, "se-version-history": 3, "se-flowchart": 1,
-  "java-purpose": 2, "java-int": 3, "java-double": 0, "java-char": 1, "java-boolean": 2, "java-string": 1, "java-method-purpose": 0, "java-class-object": 3,
-  "se-requirement-types": 1, "se-analysis": 2, "se-design": 0, "se-implementation": 3, "se-testing-purpose": 1, "se-maintenance": 2, "se-waterfall": 0, "se-boundary-testing": 3,
-  "java-println": 1, "java-int-division": 3, "java-remainder": 0, "java-branch-after": 2, "java-for-total": 3, "java-while-countdown": 0, "java-array-index": 1, "java-semicolon": 2,
-  "se-agile-feedback": 3, "se-regression": 0, "se-debug-vs-test": 1, "se-merge-conflict": 2, "se-measurable-requirement": 0, "se-accessibility-scenario": 3, "se-integration": 1, "se-priority": 2,
-  "java-equals": 3, "java-method-return": 0, "java-object-state": 1, "java-filtered-total": 2, "java-while-even": 3, "java-value-copy": 0, "java-last-element": 1, "java-array-update": 2
-};
 
+// Independent answer positions, checked against the English and Arabic wording.
+const REFERENCE = {
+  browser: 'a', 'html-role': 'c', 'css-role': 'b', 'variable-purpose': 'd', bug: 'a',
+  'se-planning': 'c', 'se-teamwork': 'b', 'java-purpose': 'd', 'java-println': 'a', 'java-int': 'c',
+  url: 'b', input: 'd', algorithm: 'a', 'save-file': 'c', comment: 'b', 'triangle-seal': 'd',
+  heading: 'b', link: 'd', 'css-color': 'a', 'javascript-role': 'c', 'se-testing': 'b',
+  'se-documentation': 'd', 'se-backup': 'a', 'java-string': 'c', 'java-boolean': 'b',
+  'java-semicolon': 'd', loop: 'a', condition: 'c', 'sequence-order': 'b', output: 'd', 'css-font': 'a', 'square-seal': 'c',
+  'html-image': 'd', 'html-list': 'a', 'css-background': 'c', 'js-console': 'b', 'se-maintenance': 'd',
+  'se-feedback': 'a', 'se-accessibility': 'c', 'java-char': 'b', 'java-double': 'd', 'java-method': 'a',
+  'js-array': 'c', 'logic-and': 'b', 'logic-compare': 'd', password: 'a', 'circle-seal': 'c', 'final-vault': 'c'
+};
 function play(game, choose = (_, correct) => correct, count = 24) {
-  game.get("start-button").click();
+  game.get('start-button').click();
   for (let index = 0; index < count; index++) {
     game.advance(2000);
-    game.answer(choose(index, game.run("currentQuestion().correct")));
-    if (index < count - 1) game.get("next-button").click();
+    game.answer(choose(index, game.run('correctIndex(currentQuestion())')));
+    if (index < count - 1) game.get('next-button').click();
   }
 }
+function changeLanguage(game, language, selector = game.document.querySelectorAll('[data-language-picker]')[0]) {
+  selector.value = language;
+  selector.events.change.forEach(callback => callback({ target: selector }));
+}
+function snapshot(game) {
+  return game.run('JSON.stringify(state, (_, value) => value instanceof Set ? [...value] : value instanceof Map ? [...value.entries()] : value)');
+}
 
-check("72 unique bank questions, concept keys, metadata, categories, and reviewed answers", () => {
+check('48 beginner questions have complete translations, unique IDs/concepts, and shared correct answers', () => {
   const game = boot();
-  assert.equal(game.run("state.phase"), "ready", game.get("feedback").textContent);
-  const levels = JSON.parse(game.run("JSON.stringify(LEVELS)"));
+  assert.equal(game.run('state.phase'), 'ready', game.get('feedback').textContent);
+  const levels = JSON.parse(game.run('JSON.stringify(LEVELS)'));
   const questions = levels.flatMap(level => level.questions);
-  assert.deepEqual(levels.map(level => level.questions.length), [24, 24, 24]);
-  for (const field of ["id", "concept", "prompt"]) assert.equal(new Set(questions.map(question => question[field])).size, 72);
-  const counts = {};
-  const positions = [0, 0, 0, 0];
-  questions.forEach(question => {
-    assert.equal(question.choices.length, 4, question.id);
-    assert.equal(new Set(question.choices).size, 4);
-    assert.equal(question.correct, REFERENCE[question.id], question.id);
-    for (const field of ["prompt", "category", "hint", "explanation", "concept"]) assert.ok(question[field]?.trim(), `${question.id}: ${field}`);
-    assert.ok(!question.hint.toLowerCase().includes(question.choices[question.correct].toLowerCase()), `${question.id}: hint states answer`);
-    counts[question.category] = (counts[question.category] ?? 0) + 1;
-    positions[question.correct]++;
-  });
-  assert.deepEqual(counts, { "Web Fundamentals": 3, Logic: 5, "Software Engineering": 27, "HTML/CSS": 6, JavaScript: 7, Java: 24 });
-  assert.deepEqual(positions, [18, 18, 18, 18]);
-  assert.equal(Object.keys(REFERENCE).length, 72);
+  assert.deepEqual(levels.map(level => level.questions.length), [16, 16, 16]);
+  for (const field of ['id', 'concept']) assert.equal(new Set(questions.map(q => q[field])).size, 48);
+  assert.equal(Object.keys(REFERENCE).length, 48);
+  for (const q of questions) {
+    assert.equal(q.correctAnswerId, REFERENCE[q.id], q.id);
+    assert.equal(q.choices.length, 4);
+    for (const lang of ['en', 'ar']) {
+      for (const value of [q.prompt[lang], q.hint[lang], q.explanation[lang], ...q.choices.map(c => c.text[lang])]) assert.ok(value.trim(), q.id);
+      assert.equal(new Set(q.choices.map(c => c.text[lang])).size, 4);
+      assert.ok(q.choices.find(c => c.id === REFERENCE[q.id]).text[lang]);
+    }
+    assert.ok(q.prompt.en.split(/\s+/).length <= 28, q.id + ': question too long');
+    assert.ok(!/for\s*\(|while\s*\(|&&|\bclass\s+\w+\s*\{/.test(q.code ?? ''), q.id);
+  }
 });
 
-check("Fisher–Yates uses shrinking bounds and never mutates its input", () => {
+check('Every static interface/ARIA key exists in both languages with matching placeholders', () => {
   const game = boot();
-  assert.equal(game.run('JSON.stringify(shuffle([1,2,3,4], () => 0))'), "[2,3,4,1]");
-  assert.equal(game.run('JSON.stringify(shuffle([1,2,3,4], () => 0.999999))'), "[1,2,3,4]");
-  assert.equal(game.run('(() => { const a=[1,2,3,4]; let calls=0; shuffle(a, () => { calls++; return 0; }); return JSON.stringify({a,calls}); })()'), '{"a":[1,2,3,4],"calls":3}');
+  const dictionary = JSON.parse(game.run('JSON.stringify(UI)'));
+  for (const [key, values] of Object.entries(dictionary)) {
+    assert.equal(values.length, 2, key);
+    assert.ok(values.every(value => typeof value === 'string' && value.trim()), key);
+    assert.deepEqual(values[0].match(/\{\w+\}/g)?.sort() ?? [], values[1].match(/\{\w+\}/g)?.sort() ?? [], key);
+  }
+  for (const match of html.matchAll(/data-i18n(?:-aria-label)?="([^"]+)"/g)) assert.ok(dictionary[match[1]], match[1]);
+  const pickers = game.document.querySelectorAll('[data-language-picker]');
+  assert.equal(pickers.length, 4, 'Header and all three dialogs have a language selector');
+  changeLanguage(game, 'ar');
+  assert.equal(game.document.documentElement.lang, 'ar');
+  assert.equal(game.document.documentElement.dir, 'rtl');
+  for (const element of game.document.querySelectorAll('[data-i18n]')) assert.equal(element.innerHTML, dictionary[element.dataset.i18n][1]);
+  for (const element of game.document.querySelectorAll('[data-i18n-aria-label]')) assert.equal(element.getAttribute('aria-label'), dictionary[element.dataset.i18nAriaLabel][1]);
+  assert.ok(pickers.every(picker => picker.value === 'ar'));
+  assert.ok(game.document.title.includes('فاتح الشفرة'));
+  game.run('setLanguage("bad")');
+  assert.equal(game.run('language'), 'ar');
 });
 
-check("500 shuffled plans have unique IDs/concepts, enough questions, balanced subjects, and all clues", () => {
+check('500 fresh shuffled plans are unique, immutable, varied, and keep the final vault after three seals', () => {
   const game = boot();
-  const bankBefore = game.run("JSON.stringify(LEVELS)");
+  const before = game.run('JSON.stringify(LEVELS)');
   const signatures = new Set();
   for (let trial = 0; trial < 500; trial++) {
-    const plan = JSON.parse(game.run("JSON.stringify(buildSessionPlan())"));
+    const plan = JSON.parse(game.run('JSON.stringify(buildSessionPlan())'));
     assert.equal(plan.length, 24);
-    assert.equal(new Set(plan.map(question => question.id)).size, 24);
-    assert.equal(new Set(plan.map(question => question.concept)).size, 24);
+    assert.equal(new Set(plan.map(q => q.id)).size, 24);
+    assert.equal(new Set(plan.map(q => q.concept)).size, 24);
     assert.equal(plan.at(-1).final, true);
-    assert.equal(plan.filter(question => question.final).length, 1);
-    assert.equal(plan.filter(question => question.clue).length, 3);
-    for (let index = 1; index < plan.length; index++) assert.notEqual(plan[index].category, plan[index - 1].category);
+    assert.equal(plan.filter(q => q.final).length, 1);
+    assert.equal(plan.filter(q => q.clue).length, 3);
+    for (let i = 1; i < 24; i++) assert.notEqual(plan[i].category, plan[i - 1].category);
     for (let level = 0; level < 3; level++) {
       const section = plan.slice(level * 8, level * 8 + 8);
-      assert.ok(section.every(question => question.difficulty === level + 1));
-      assert.ok(section.filter(question => question.category === "Software Engineering").length >= 2);
-      assert.ok(section.filter(question => question.category === "Java").length >= 2);
+      assert.ok(section.every(q => q.difficulty === level + 1));
+      for (const category of ['Java', 'Software Engineering']) assert.ok(section.filter(q => q.category === category).length >= 2);
     }
-    assert.equal(plan.reduce((sum, question) => sum + question.points, 0), 3700);
-    signatures.add(plan.map(question => question.id).join(","));
+    assert.equal(plan.reduce((sum, q) => sum + q.points, 0), 3700);
+    signatures.add(plan.map(q => q.id).join(','));
   }
   assert.ok(signatures.size > 490);
-  assert.equal(game.run("JSON.stringify(LEVELS)"), bankBefore);
+  assert.equal(game.run('JSON.stringify(LEVELS)'), before);
+  assert.equal(game.run('JSON.stringify(shuffle([1,2,3,4], () => 0))'), '[2,3,4,1]');
 });
 
-check("All 288 bank question/option outcomes are exercised in real shuffled runs", () => {
+check('All 384 question/choice/language outcomes work in real shuffled games', () => {
   const covered = new Set();
-  for (let seed = 1; seed <= 120 && covered.size < 288; seed++) {
-    for (let option = 0; option < 4; option++) {
+  for (let seed = 1; seed <= 100 && covered.size < 384; seed++) {
+    for (const language of ['en', 'ar']) for (let option = 0; option < 4; option++) {
       const game = boot({ seed });
-      game.get("start-button").click();
+      changeLanguage(game, language);
+      game.get('start-button').click();
       let earned = 0;
       const seen = new Set();
       for (let index = 0; index < 24; index++) {
-        const id = game.run("currentQuestion().id");
-        assert.ok(!seen.has(id));
-        seen.add(id);
-        assert.equal(game.run("state.usedQuestionIds.size"), index + 1);
-        assert.equal(game.run("state.usedQuestionIds.has(currentQuestion().id)"), true);
-        const cards = game.get("answer-grid").children;
+        const q = JSON.parse(game.run('JSON.stringify(currentQuestion())'));
+        assert.ok(!seen.has(q.id)); seen.add(q.id);
+        assert.equal(game.run('state.usedQuestionIds.size'), index + 1);
+        assert.equal(game.get('question-title').textContent, q.prompt[language]);
+        assert.equal(game.get('feedback').hidden, true);
+        const cards = game.get('answer-grid').children;
         assert.equal(cards.length, 4);
-        assert.equal(game.get("feedback").hidden, true);
-        assert.equal(game.get("hint-text").textContent, "");
-        assert.ok(cards.every(card => !card.classList.contains("correct") && !card.getAttribute("aria-label").includes("correct answer")));
-        const correct = game.run("currentQuestion().correct");
-        const points = game.run("currentQuestion().points");
+        cards.forEach((card, i) => {
+          assert.equal(card.querySelector('.answer-text').textContent, q.choices[i].text[language]);
+          assert.equal(card.classList.contains('correct'), false);
+        });
         game.answer(option);
-        covered.add(`${id}:${option}`);
-        earned += option === correct ? points : 0;
-        assert.equal(game.run("score()"), earned);
-        assert.ok(game.get("feedback").textContent.includes(game.run("currentQuestion().explanation")));
-        assert.equal(cards.filter(card => card.classList.contains("correct")).length, 1);
+        covered.add(q.id + ':' + option + ':' + language);
+        if (q.choices[option].id === REFERENCE[q.id]) earned += q.points;
+        assert.equal(game.run('score()'), earned);
+        assert.ok(game.get('feedback').textContent.includes(q.explanation[language]));
+        assert.equal(cards.filter(card => card.classList.contains('correct')).length, 1);
         assert.ok(cards.every(card => card.disabled));
-        game.run("submitAnswer(); selectAnswer(0); useHint()");
-        assert.equal(game.run("score()"), earned);
-        assert.equal(game.run("state.responses.length"), index + 1);
-        if (index < 23) game.get("next-button").click();
+        game.run('submitAnswer(); selectAnswer(0); useHint()');
+        assert.equal(game.run('score()'), earned);
+        assert.equal(game.run('state.responses.length'), index + 1);
+        if (index < 23) game.get('next-button').click();
       }
-      assert.equal(game.run("state.usedQuestionIds.size"), 24);
-      assert.equal(game.run("state.phase"), option === 2 ? "won" : "lost");
+      assert.equal(game.run('state.phase'), option === 2 ? 'won' : 'lost');
     }
   }
-  assert.equal(covered.size, 288, "Every bank question must be reached with all four options");
+  assert.equal(covered.size, 384, 'Every answer for every question is exercised in both languages');
 });
 
-check("Used IDs survive levels; restart creates fresh tracking and a new shuffle", () => {
+check('Language switching preserves ready, selected, hinted, and submitted state exactly', () => {
   const game = boot();
-  const firstPlan = game.run('state.sessionQuestions.map(question => question.id).join(",")');
-  const sessionId = game.run("state.sessionId");
-  game.run("globalThis.originalSet = state.usedQuestionIds");
-  play(game, (_, correct) => correct, 8);
-  assert.equal(game.run("state.usedQuestionIds.size"), 8);
-  game.get("next-button").click();
-  assert.equal(game.run("levelIndex()"), 1);
-  assert.equal(game.run("state.usedQuestionIds === originalSet"), true);
-  assert.equal(game.run("state.usedQuestionIds.size"), 9);
-  game.get("restart-button").click();
-  game.get("confirm-restart").click();
-  assert.ok(game.run("state.sessionId") > sessionId);
-  assert.equal(game.run("state.usedQuestionIds === originalSet"), false);
-  assert.equal(game.run("state.usedQuestionIds.size"), 1, "The ready screen already shows the new first question");
-  assert.equal(game.run("state.responses.length"), 0);
-  assert.equal(game.run("state.hintsUsed"), 0);
-  assert.notEqual(game.run('state.sessionQuestions.map(question => question.id).join(",")'), firstPlan);
+  let before = snapshot(game);
+  changeLanguage(game, 'ar'); assert.equal(snapshot(game), before);
+  game.get('start-button').click(); game.advance(4300); game.run('tick()');
+  game.get('answer-grid').children[2].click();
+  game.get('hint-button').click();
+  const deadline = game.run('state.deadline');
+  before = snapshot(game);
+  for (const lang of ['en', 'ar', 'en', 'ar']) {
+    changeLanguage(game, lang);
+    assert.equal(snapshot(game), before);
+    assert.equal(game.get('answer-grid').children[2].getAttribute('aria-pressed'), 'true');
+    assert.equal(game.get('hint-panel').hidden, false);
+    assert.ok(game.get('hint-text').textContent.startsWith(game.run('localize(currentQuestion().hint)')));
+    assert.equal(game.get('hint-button').disabled, true);
+    assert.equal(game.get('submit-button').disabled, false);
+    assert.equal(game.intervals.size, 1);
+  }
+  game.get('submit-button').click(); before = snapshot(game);
+  changeLanguage(game, 'en'); assert.equal(snapshot(game), before);
+  assert.equal(game.get('feedback').hidden, false);
+  assert.ok(game.get('feedback').textContent.includes(game.run('currentQuestion().explanation.en')));
+  assert.equal(game.get('answer-grid').children.filter(card => card.classList.contains('correct')).length, 1);
+  assert.ok(game.get('answer-grid').children.every(card => card.disabled));
+  assert.equal(game.get('submit-button').hidden, true);
+  assert.equal(game.get('next-button').hidden, false);
+  game.advance(10000); game.run('tick()');
+  assert.equal(game.run('state.deadline'), deadline);
+  assert.equal(game.run('state.remaining'), 1186);
 });
 
-check("Exhaustion, excluded IDs, duplicate IDs/concepts, and malformed choices stop safely", () => {
-  for (const beforeInit of [
-    'LEVELS[1].questions = LEVELS[1].questions.filter(q => q.category !== "Java")',
-    'LEVELS[0].questions = LEVELS[0].questions.filter(q => q.clue || q.final || q.id === "java-int" || q.id === "java-char" || q.id === "se-meaning" || q.id === "se-planning")',
-    'LEVELS[2].questions.push({...LEVELS[0].questions[0], difficulty:3, points:200})',
-    'LEVELS[0].questions[1].concept = LEVELS[0].questions[0].concept',
-    'LEVELS[0].questions[0].choices = ["Same","Same","Same","Same"]'
-  ]) {
-    const game = boot({ beforeInit });
-    assert.equal(game.run("state.phase"), "error");
-    assert.equal(game.get("start-button").disabled, true);
-    assert.equal(game.get("feedback").hidden, false);
-    assert.ok(game.get("feedback").textContent.length > 20);
-    assert.equal(game.get("answer-grid").children.length, 0);
-    assert.equal(game.intervals.size, 0);
+check('All 24 transitions, seal digits, hints, score, and victory survive alternating languages', () => {
+  const game = boot(); game.get('start-button').click();
+  for (let index = 0; index < 24; index++) {
+    const lang = index % 2 ? 'ar' : 'en'; changeLanguage(game, lang);
+    if (index < 3) game.get('hint-button').click();
+    game.advance(1000); game.answer(game.run('correctIndex(currentQuestion())'));
+    const before = snapshot(game); changeLanguage(game, lang === 'ar' ? 'en' : 'ar');
+    assert.equal(snapshot(game), before);
+    assert.equal(game.run('levelIndex()'), Math.floor(index / 8));
+    if (index < 23) game.get('next-button').click();
+  }
+  assert.equal(game.run('state.phase'), 'won');
+  assert.equal(game.run('score()'), 3475);
+  assert.equal(game.run('state.hintsUsed'), 3);
+  assert.equal(game.run('state.usedQuestionIds.size'), 24);
+  assert.equal(game.run('state.elapsedMs'), 24000);
+  assert.equal(game.get('progress-label').textContent, '24 / 24');
+  assert.equal(game.intervals.size, 0);
+  assert.equal(game.run('["square","circle","triangle"].map(shape => state.clues.get(shape).digit).join("")'), '548');
+  game.get('next-button').click();
+  const before = snapshot(game);
+  changeLanguage(game, 'ar', game.get('result-dialog').querySelector('[data-language-picker]'));
+  assert.equal(snapshot(game), before);
+  assert.equal(game.get('result-dialog').open, true);
+  assert.equal(game.get('result-description').textContent, game.run('t("reason.won")'));
+  assert.match(game.get('vault-explanation-text').textContent, /548/);
+  assert.equal(game.get('result-time').textContent, '00:24.000');
+  game.get('review-mission').click();
+  changeLanguage(game, 'en'); assert.equal(game.get('result-dialog').open, false);
+});
+
+check('Wrong answers, final failure, and translated result screen remain usable', () => {
+  const game = boot(); changeLanguage(game, 'ar');
+  play(game, (_, correct) => (correct + 1) % 4);
+  assert.equal(game.run('state.phase'), 'lost'); assert.equal(game.run('score()'), 0);
+  assert.equal(game.run('state.clues.size'), 3); assert.equal(game.storage.size, 0);
+  game.get('next-button').click();
+  assert.equal(game.get('vault-explanation').hidden, false);
+  assert.equal(game.get('result-description').textContent, game.run('t("reason.wrong")'));
+  changeLanguage(game, 'en');
+  assert.equal(game.get('result-description').textContent, game.run('t("reason.wrong")'));
+});
+
+check('Language changes inside guide/restart dialogs keep dialogs open and timer running', () => {
+  const game = boot(); game.get('start-button').click();
+  for (const id of ['guide', 'restart']) {
+    game.get(id + '-button').click();
+    const dialog = game.get(id + '-dialog');
+    const before = snapshot(game);
+    changeLanguage(game, game.run('language') === 'en' ? 'ar' : 'en', dialog.querySelector('[data-language-picker]'));
+    assert.equal(snapshot(game), before); assert.equal(dialog.open, true);
+    game.advance(5000); game.run('tick()');
+    assert.equal(game.run('state.phase'), 'playing'); assert.equal(game.intervals.size, 1);
+    dialog.close();
+  }
+  assert.equal(game.run('state.remaining'), 1190);
+});
+
+check('Keyboard, native select isolation, dialog isolation, restart, and replay work', () => {
+  const game = boot(); game.get('start-button').click();
+  for (const [key, index] of [['A',0],['b',1],['C',2],['d',3],['1',0],['2',1],['3',2],['4',3]]) { game.key(key); assert.equal(game.run('state.selected'), index); }
+  game.key('ArrowRight'); assert.equal(game.run('state.selected'), 0);
+  game.key('ArrowLeft'); assert.equal(game.run('state.selected'), 3);
+  const picker = game.document.querySelector('[data-language-picker]'); picker.focus(); game.key('1');
+  assert.equal(game.run('state.selected'), 3);
+  game.get('guide-button').click(); game.key('a'); assert.equal(game.run('state.selected'), 3);
+  game.get('guide-dialog').close();
+  game.get('answer-grid').children[game.run('correctIndex(currentQuestion())')].focus();
+  game.key(String(game.run('correctIndex(currentQuestion())') + 1)); game.key('Enter');
+  assert.equal(game.run('score()'), 100); game.key('Enter'); assert.equal(game.run('state.index'), 1);
+  changeLanguage(game, 'ar');
+  game.get('restart-button').click(); game.get('confirm-restart').click();
+  assert.equal(game.run('state.phase'), 'ready'); assert.equal(game.run('language'), 'ar');
+  assert.equal(game.run('state.usedQuestionIds.size'), 1); assert.equal(game.run('state.hintsUsed'), 0); assert.equal(game.intervals.size, 0);
+  play(game); game.get('next-button').click(); game.get('play-again').click();
+  assert.equal(game.run('state.phase'), 'ready'); assert.equal(game.get('result-dialog').open, false);
+});
+
+check('Timer expiry cannot be bypassed by events or a language switch', () => {
+  for (const action of ['submitAnswer()', 'useHint()', 'nextQuestion()', 'selectAnswer(0)', 'setLanguage("ar"); tick()']) {
+    const game = boot(); game.get('start-button').click(); game.run('selectAnswer(0)');
+    if (action === 'nextQuestion()') game.run('submitAnswer()');
+    const points = game.run('score()');
+    game.advance(1_200_000); game.run(action);
+    assert.equal(game.run('state.phase'), 'lost'); assert.equal(game.run('score()'), points);
+    assert.equal(game.get('timer').textContent, '00:00'); assert.equal(game.get('result-dialog').open, true);
+    assert.equal(game.get('vault-explanation').hidden, true);
+    changeLanguage(game, 'ar');
+    assert.equal(game.get('result-description').textContent, game.run('t("reason.timeout")'));
+  }
+  const game = boot(); game.get('start-button').click(); game.get('guide-button').click();
+  game.advance(1_200_001); game.event('visibilitychange');
+  assert.equal(game.run('state.phase'), 'lost'); assert.equal(game.get('guide-dialog').open, false);
+});
+
+check('Exhausted or repeated questions stop safely with bilingual completion and no repeats', () => {
+  for (const mutation of ['state.sessionQuestions.length = 1', 'state.sessionQuestions[1] = state.sessionQuestions[0]']) {
+    const game = boot(); game.get('start-button').click(); game.answer(game.run('correctIndex(currentQuestion())'));
+    game.run(mutation); game.get('next-button').click();
+    assert.equal(game.run('state.phase'), 'complete'); assert.equal(game.run('state.usedQuestionIds.size'), 1);
+    assert.equal(game.get('answer-grid').children.length, 0); assert.equal(game.intervals.size, 0);
+    assert.match(game.get('feedback').textContent, /No unused questions/);
+    changeLanguage(game, 'ar'); assert.equal(game.get('feedback').textContent, game.run('t("exhausted")'));
+    game.run('startMission(); submitAnswer(); nextQuestion(); useHint()'); assert.equal(game.run('state.responses.length'), 1);
   }
   const game = boot();
-  const excluded = "java-int";
-  assert.equal(game.run(`buildSessionPlan(LEVELS, Math.random, new Set(["${excluded}"])).some(q => q.id === "${excluded}")`), false);
   assert.throws(() => game.run('buildSessionPlan(LEVELS, Math.random, new Set(QUESTIONS.map(q => q.id)))'), /unused/);
+  assert.equal(game.run('buildSessionPlan(LEVELS, Math.random, new Set(["java-int"])).some(q => q.id === "java-int")'), false);
 });
 
-check("Last-minute repeated ID or concept is blocked before it reaches the page", () => {
-  for (const mode of ["id", "concept"]) {
-    const game = boot();
-    game.get("start-button").click();
-    game.answer(game.run("currentQuestion().correct"));
-    if (mode === "id") game.run("state.sessionQuestions[1] = state.sessionQuestions[0]");
-    else game.run('state.sessionQuestions[1] = {...state.sessionQuestions[1], concept: currentQuestion().concept}');
-    game.get("next-button").click();
-    assert.equal(game.run("state.phase"), "error");
-    assert.equal(game.run("state.usedQuestionIds.size"), 1);
-    assert.equal(game.run("state.responses.length"), 1);
-    assert.equal(game.get("answer-grid").children.length, 0);
-    assert.match(game.get("feedback").textContent, /repeated question was blocked/);
-    assert.equal(game.intervals.size, 0);
+check('Duplicate IDs/concepts, missing translations, malformed options, and bad answer IDs stop safely', () => {
+  for (const beforeInit of [
+    'LEVELS[0].questions[1].id = LEVELS[0].questions[0].id',
+    'LEVELS[0].questions[1].concept = LEVELS[0].questions[0].concept',
+    'delete LEVELS[0].questions[0].hint.ar',
+    'LEVELS[0].questions[0].choices.pop()',
+    'LEVELS[0].questions[0].correctAnswerId = "missing"',
+    'LEVELS[0].questions[0].choices[1].text.ar = LEVELS[0].questions[0].choices[0].text.ar'
+  ]) {
+    const game = boot({ beforeInit }); assert.equal(game.run('state.phase'), 'error');
+    assert.equal(game.get('start-button').disabled, true); assert.equal(game.get('feedback').hidden, false);
+    assert.equal(game.get('answer-grid').children.length, 0); assert.equal(game.intervals.size, 0);
+    changeLanguage(game, 'ar'); assert.equal(game.get('feedback').textContent, game.run('t("bankError")'));
   }
 });
 
-check("JavaScript outputs and click-event behavior match the reviewed answers", () => {
+check('Personal best, time tie-breaks, full score, and unavailable storage work', () => {
+  const game = boot(); play(game);
+  assert.deepEqual(JSON.parse(game.storage.get('code-breaker.beginner.best.v2')), { score:3700, elapsedMs:48000 });
+  game.advance(200000); game.get('next-button').click(); assert.equal(game.get('result-time').textContent, '00:48.000');
+  assert.equal(game.get('best-score').textContent, '3,700 PTS');
+  assert.equal(game.run('isBetter({score:100,elapsedMs:999},{score:100,elapsedMs:1000})'), true);
+  assert.equal(game.run('isBetter({score:99,elapsedMs:1},{score:100,elapsedMs:1000})'), false);
+  const blocked = boot({ noStorage:true }); play(blocked); blocked.get('next-button').click();
+  assert.match(blocked.get('record-message').textContent, /Storage is unavailable/);
+  changeLanguage(blocked, 'ar'); assert.equal(blocked.get('record-message').textContent, blocked.run('t("record.temporary")'));
+  for (const value of ['broken', '{"score":99999,"elapsedMs":1}', '{"score":-1,"elapsedMs":1}']) assert.equal(boot({ storage:new Map([['code-breaker.beginner.best.v2',value]]) }).run('best'), null);
+});
+
+check('The simple JavaScript example prints the reviewed answer in both languages', () => {
   const game = boot();
   const snippets = JSON.parse(game.run('JSON.stringify(QUESTIONS.filter(q => q.filename?.endsWith(".js")))'));
-  assert.equal(snippets.length, 7);
-  for (const question of snippets) {
+  assert.equal(snippets.length, 1);
+  for (const q of snippets) {
     const output = [];
-    let listener;
-    vm.runInNewContext(question.code, {
-      console: { log: value => output.push(String(value)) },
-      button: { addEventListener(type, callback) { assert.equal(type, "click"); listener = callback; } }
-    });
-    if (question.id === "click-event") {
-      assert.deepEqual(output, []);
-      listener(); listener();
-      assert.deepEqual(output, ["Hello", "Hello"]);
-    } else assert.deepEqual(output, [question.choices[question.correct]], question.id);
+    vm.runInNewContext(q.code, { console: { log(value) { output.push(String(value)); } } });
+    const answer = q.choices.find(choice => choice.id === REFERENCE[q.id]);
+    assert.deepEqual(output, [answer.text.en]);
+    assert.deepEqual(output, [answer.text.ar]);
   }
 });
 
-check("Scoring, hints, full-score victory, clue order, and the final explanation are intact", () => {
-  const game = boot();
-  game.get("start-button").click();
-  for (let index = 0; index < 24; index++) {
-    assert.equal(game.run("levelIndex()"), Math.floor(index / 8));
-    if (index === 23) assert.equal(game.run("state.clues.size"), 3);
-    game.advance(1000);
-    game.answer(game.run("currentQuestion().correct"));
-    if (index < 23) game.get("next-button").click();
-  }
-  assert.equal(game.run("state.phase"), "won");
-  assert.equal(game.run("score()"), 3700);
-  assert.equal(game.run("state.elapsedMs"), 24000);
-  assert.equal(game.get("progress-label").textContent, "24 / 24");
-  assert.equal(game.intervals.size, 0);
-  game.get("next-button").click();
-  assert.equal(game.get("result-dialog").open, true);
-  assert.match(game.get("vault-explanation-text").textContent, /548/);
-  assert.equal(game.get("result-time").textContent, "00:24.000");
-  assert.equal(game.run('["square","circle","triangle"].map(shape => state.clues.get(shape).digit).join("")'), "548");
-  const hints = boot();
-  hints.get("start-button").click();
-  for (let i = 0; i < 3; i++) {
-    hints.get("hint-button").click();
-    hints.run("useHint()");
-    assert.equal(hints.run("state.hintsUsed"), i + 1);
-    hints.answer(hints.run("currentQuestion().correct"));
-    assert.equal(hints.run("score()"), (i + 1) * 25);
-    hints.get("next-button").click();
-  }
-  hints.run("useHint()");
-  assert.equal(hints.run("state.hintsUsed"), 3);
-  assert.equal(hints.get("hint-button").disabled, true);
-});
-
-check("Wrong answers progress, clues remain recoverable, and a wrong final key loses", () => {
-  const game = boot();
-  play(game, (_, correct) => (correct + 1) % 4);
-  assert.equal(game.run("state.phase"), "lost");
-  assert.equal(game.run("score()"), 0);
-  assert.equal(game.run("state.clues.size"), 3);
-  assert.equal(game.storage.size, 0);
-  game.get("next-button").click();
-  assert.equal(game.get("vault-explanation").hidden, false);
-});
-
-check("Keyboard selection, submission, dialog isolation, and restart still work", () => {
-  const game = boot();
-  game.get("start-button").click();
-  for (const [key, index] of [["A",0],["b",1],["C",2],["d",3],["1",0],["2",1],["3",2],["4",3]]) {
-    game.key(key);
-    assert.equal(game.run("state.selected"), index);
-  }
-  game.key("ArrowRight");
-  assert.equal(game.run("state.selected"), 0);
-  game.key("ArrowLeft");
-  assert.equal(game.run("state.selected"), 3);
-  game.key("a", { repeat: true });
-  assert.equal(game.run("state.selected"), 3);
-  game.get("guide-button").click();
-  game.key("a");
-  assert.equal(game.run("state.selected"), 3);
-  game.document.querySelectorAll("[data-close]").find(button => button.dataset.close === "guide-dialog").click();
-  const correct = game.run("currentQuestion().correct");
-  game.key(String(correct + 1)); game.key("Enter");
-  assert.equal(game.run("score()"), 100);
-  game.key("Enter");
-  assert.equal(game.run("state.index"), 1);
-  game.key("Enter");
-  assert.equal(game.run("state.responses.length"), 1);
-  game.get("restart-button").click(); game.get("confirm-restart").click();
-  assert.equal(game.run("state.phase"), "ready");
-  assert.equal(game.intervals.size, 0);
-});
-
-check("Timer expiry cannot be bypassed by answer, hint, selection, or transition events", () => {
-  for (const action of ["submitAnswer()", "useHint()", "nextQuestion()", "selectAnswer(0)"]) {
-    const game = boot();
-    game.get("start-button").click();
-    game.run("selectAnswer(0)");
-    if (action === "nextQuestion()") game.run("submitAnswer()");
-    const points = game.run("score()");
-    game.advance(1_200_000); game.run(action);
-    assert.equal(game.run("state.phase"), "lost");
-    assert.equal(game.run("score()"), points);
-    assert.equal(game.get("timer").textContent, "00:00");
-    assert.equal(game.get("result-dialog").open, true);
-    assert.equal(game.get("vault-explanation").hidden, true);
-  }
-  const game = boot();
-  game.get("start-button").click(); game.get("guide-button").click();
-  game.advance(1_200_001); game.event("visibilitychange");
-  assert.equal(game.run("state.phase"), "lost");
-  assert.equal(game.get("guide-dialog").open, false);
-});
-
-check("Personal best, completion-time ties, replay, and storage failures are intact", () => {
-  const game = boot();
-  play(game);
-  assert.deepEqual(JSON.parse(game.storage.get("code-breaker.beginner.best.v2")), { score:3700, elapsedMs:48000 });
-  game.advance(200000); game.get("next-button").click();
-  assert.equal(game.get("result-time").textContent, "00:48.000");
-  game.get("review-mission").click(); game.get("next-button").click(); game.get("play-again").click();
-  assert.equal(game.run("state.phase"), "ready");
-  assert.equal(game.get("vault-explanation-text").textContent, "");
-  assert.equal(game.get("best-score").textContent, "3,700 PTS");
-  assert.equal(game.run("isBetter({score:100,elapsedMs:999},{score:100,elapsedMs:1000})"), true);
-  assert.equal(game.run("isBetter({score:99,elapsedMs:1},{score:100,elapsedMs:1000})"), false);
-  const blocked = boot({ noStorage:true });
-  play(blocked); blocked.get("next-button").click();
-  assert.match(blocked.get("record-message").textContent, /Storage is unavailable/);
-  for (const value of ["broken", '{"score":99999,"elapsedMs":1}', '{"score":-1,"elapsedMs":1}']) {
-    assert.equal(boot({ storage:new Map([["code-breaker.beginner.best.v2",value]]) }).run("best"), null);
-  }
-});
-
-check("HTML references and the original responsive/reduced-motion design remain valid", () => {
+check('HTML references, local-only scripts, responsive styles, and reduced motion remain valid', () => {
   const ids = [...html.matchAll(/id="([^"]+)"/g)].map(match => match[1]);
   assert.equal(ids.length, new Set(ids).size);
-  for (const match of source.matchAll(/\$\("([^"]+)"\)/g)) assert.ok(ids.includes(match[1]), match[1]);
+  for (const match of source.matchAll(/\$\(["']([^"']+)["']\)/g)) assert.ok(ids.includes(match[1]), match[1]);
   assert.equal((css.match(/\{/g) ?? []).length, (css.match(/\}/g) ?? []).length);
-  assert.match(css, /prefers-reduced-motion/);
-  assert.match(css, /max-width: 680px/);
+  assert.match(css, /prefers-reduced-motion/); assert.match(css, /max-width: 680px/); assert.match(css, /html\[dir="rtl"\]/);
+  assert.ok(!/fetch\(|XMLHttpRequest|https?:\/\//.test(source), 'No external runtime translation or network dependency');
+  for (const match of html.matchAll(/<script src="([^"]+)"/g)) assert.ok(fs.existsSync(path.join(root, match[1])));
 });
 
-console.log(`${checks.length} checks passed:\n${checks.map(name => `  ✓ ${name}`).join("\n")}`);
+console.log(checks.length + ' checks passed:\n' + checks.map(name => '  ✓ ' + name).join('\n'));

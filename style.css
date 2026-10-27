@@ -514,3 +514,58 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* Local language controls remain reachable in the header and every dialog. */
+.language-picker { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.language-picker select { min-height: 44px; max-width: 150px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+select:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.modal > .language-picker { display: flex; justify-content: flex-end; margin: 0 12px 20px; }
+.topbar-actions { gap: 16px; flex-wrap: wrap; justify-content: flex-end; }
+.answer-text { min-width: 0; overflow-wrap: anywhere; text-align: start; unicode-bidi: plaintext; }
+.answer-key, .answer-marker { flex-shrink: 0; }
+.answer-marker { margin-left: 0; margin-inline-start: auto; }
+.question-actions > .button { margin-left: 0; margin-inline-start: auto; }
+.hero-arabic { text-align: start; }
+.selection-label > span { display: inline; }
+.code-panel { direction: ltr; text-align: left; }
+[dir="ltr"] { unicode-bidi: isolate; }
+
+/* Mirror the reading flow while code and time values keep their direction. */
+html[dir="rtl"] { --sans: "Segoe UI", Tahoma, Arial, sans-serif; --mono: "Segoe UI", Tahoma, Arial, sans-serif; }
+html[dir="rtl"] h1, html[dir="rtl"] h2, html[dir="rtl"] .brand { letter-spacing: 0; }
+html[dir="rtl"] .eyebrow, html[dir="rtl"] .section-label, html[dir="rtl"] .stat-label,
+html[dir="rtl"] .question-topline, html[dir="rtl"] .level-state { letter-spacing: 0; }
+html[dir="rtl"] .level-sidebar { border-right: 0; border-left: 1px solid var(--border); padding: 3px 0 0 23px; }
+html[dir="rtl"] .intel-sidebar { border-left: 0; border-right: 1px solid var(--border); padding: 3px 23px 0 0; }
+html[dir="rtl"] .level-item.active { box-shadow: inset -3px 0 var(--accent); }
+html[dir="rtl"] .hint-panel { border-left: 0; border-right: 2px solid var(--accent); }
+html[dir="rtl"] .stat + .stat::before { left: auto; right: 0; }
+html[dir="rtl"] .stat-tag { right: auto; left: 20px; }
+html[dir="rtl"] .rules-list { padding-left: 0; padding-right: 19px; }
+html[dir="rtl"] .rules-list li { padding-left: 0; padding-right: 3px; }
+html[dir="rtl"] .modal-close { right: auto; left: 16px; }
+html[dir="rtl"] .result-stats > div + div { border-left: 0; border-right: 1px solid var(--border); }
+html[dir="rtl"] .team-wordmark { direction: ltr; text-align: right; }
+html[dir="rtl"] .team-wordmark small { direction: rtl; }
+html[dir="rtl"] pre, html[dir="rtl"] #timer, html[dir="rtl"] #result-time { font-family: Consolas, "Liberation Mono", monospace; }
+html[dir="rtl"] #timer { text-align: right; }
+html[dir="rtl"] .stat-label, html[dir="rtl"] .section-label,
+html[dir="rtl"] .question-topline, html[dir="rtl"] .level-state { font-size: 11px; line-height: 1.7; }
+@media (max-width: 1150px) {
+  .topbar .connection { display: none; }
+  html[dir="rtl"] .level-sidebar { padding-left: 16px; }
+  html[dir="rtl"] .intel-sidebar { padding-right: 16px; }
+}
+@media (max-width: 950px) {
+  html[dir="rtl"] .intel-sidebar { border-right: 0; padding: 23px 0 0; }
+}
+@media (max-width: 680px) {
+  .topbar { height: auto; min-height: 100px; padding: 12px 0; flex-wrap: wrap; }
+  .topbar-actions { gap: 10px; }
+  .language-picker { font-size: 12px; }
+  .question-actions { flex-wrap: wrap; }
+  .question-actions .button { white-space: normal; }
+  .selection-label > span { display: none; }
+  html[dir="rtl"] .level-sidebar { border-left: 0; padding: 0; }
+  html[dir="rtl"] .stat-tag { left: 12px; }
+}
